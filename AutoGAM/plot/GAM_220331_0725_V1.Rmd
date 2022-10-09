@@ -1,0 +1,192 @@
+---
+title: "GAM Models Summary"
+output:
+  html_document:
+    toc: yes
+    code_download: yes
+    self_contained: yes
+  pdf_document:
+    toc: yes
+---
+## load data
+```{r, message=F, warning=FALSE, echo=FALSE}
+library(mgcv)
+library(plyr)
+library(dplyr)
+library(knitr)
+library(purrr)
+library(stringi)
+library(readxl)
+library(ggplot2)
+library(stringi)
+library(reshape2)
+library(kableExtra)
+library(formattable)
+P = rprojroot::find_rstudio_root_file
+R.utils::sourceDirectory(P("R"))
+new_name = read.table(P("plot/best_var_name.tsv"), sep = "\t", header = TRUE)
+
+rel_deviance = function(bgam, who){
+  dev = as.double(summary(bgam)$dev.expl, length = 3)
+  a = get_relative_contribs(bgam) %>%
+    mutate(rel_deviance_explained = signif(rel_deviance_explained*100, digits=3)) %>%
+    rename(Term = term, `Relative Deviance Explained` = rel_deviance_explained) %>%
+    left_join(new_name, by=c("Term" = "variable")) %>%
+    mutate(variable = ifelse(is.na(best_name), Term, best_name)) %>%
+    dplyr::select(variable, `Relative Deviance Explained`)
+  
+  names(a) = c("term", paste(who, "(", as.character(format(dev*100, digits=2)), "%)", " AICc=", as.character(format(MuMIn::AICc(bgam), digits=6)), sep = ""))
+  return(a)
+    # kable(a, align=c("l","r"), format = "html") %>%
+    # kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+}
+cross_validation2 = function(bgam){
+  a = cv_gam(bgam) %>%
+    mutate(p_value = round(p_value, digits=3)) %>% 
+    rename(Fold = fold, `Observations Fit`=n_fit, `Observations Held Out` = n_validate,
+           `P-value`=p_value, `Mean Error` = mean_error) %>% 
+    count(`P-value` < 0.05)
+  return(a$n[[1]])
+    # kable(align=c("l","r", "r", "r", "r"), format = "html") %>%
+    # kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+}
+gam_ALL_total = readRDS(P("temp/GAM0728/GAM_ALL.rds"))$model
+gam_DNA_total = readRDS(P("temp/GAM0728/GAM_DNA.rds"))$model
+gam_RNA_total = readRDS(P("temp/GAM0728/GAM_RNA.rds"))$model
+```
+
+```{r}
+filter_by_aic <- function(model_list) {
+  min_aic = model_list[[1]]$aic
+  acc_model = 1
+  for (model in model_list) {
+    if ((model$aic - min_aic) < 3) {
+      acc_model = acc_model + 1
+    }
+  }
+  return(model_list[1:acc_model])
+}
+
+model_summary <- function(model_list) {
+  get_ms <- function(model) {
+    ms_list = data.frame(Deviance_Explained = signif(summary(model)$dev.expl*100, digits=3),
+                         Cross_Validation_10Times = cross_validation2(model),
+                         AIC = model$aic)
+    var_list = get_relative_contribs(model)
+    tmp_var_list = cbind(ms_list, var_list) %>%
+      dcast(AIC ~ term)
+    ms_list = ms_list %>%
+      left_join(tmp_var_list, by='AIC')
+    return(ms_list)
+  }
+  ms_all = lapply(model_list, get_ms)
+  return(ms_all)
+}
+
+ms_ALL_filter = filter_by_aic(gam_ALL_total) %>%
+  model_summary()
+ms_DNA_filter = filter_by_aic(gam_DNA_total) %>%
+  model_summary()
+ms_RNA_filter = filter_by_aic(gam_RNA_total) %>%
+  model_summary()
+
+ms_ALL_df = ldply(ms_ALL_filter, data.frame) %>%
+  mutate(Model_Type = 'Total virus') %>%
+  select(Model_Type, everything()) %>%
+  write.csv('0_ms_ALL_df.csv', row.names = F)
+ms_DNA_df = ldply(ms_DNA_filter, data.frame) %>%
+  mutate(Model_Type = 'DNA virus') %>%
+  select(Model_Type, everything()) %>%
+  write.csv('0_ms_DNA_df.csv', row.names = F)
+ms_RNA_df = ldply(ms_RNA_filter, data.frame) %>%
+  mutate(Model_Type = 'RNA virus') %>%
+  select(Model_Type, everything()) %>%
+  write.csv('0_ms_RNA_df.csv', row.names = F)
+
+ms_merged = c(ms_ALL_df, ms_DNA_df, ms_RNA_df)
+
+
+
+```
+
+```{r}
+
+count_var <- function(model_list, who) {
+  var_list = data.frame(c())
+  for (model in model_list) {
+    rel_deviance = get_relative_contribs(model) %>%
+      mutate(rel_deviance_explained = signif(rel_deviance_explained*100, digits=3),
+             model_type = who)
+    rel_deviance = rel_deviance[order(-rel_deviance$rel_deviance_explained), ]
+    var_list = rbind(var_list, rel_deviance)
+  }
+  return(var_list)
+}
+
+ver_ALL_filter = filter_by_aic(gam_ALL_total) %>%
+  count_var('Total virus')
+ver_DNA_filter = filter_by_aic(gam_DNA_total) %>%
+  count_var('DNA virus')
+ver_RNA_filter = filter_by_aic(gam_RNA_total) %>%
+  count_var('RNA virus')
+var_filter = rbind(ver_ALL_filter, ver_DNA_filter, ver_RNA_filter)
+var_ana = var_filter %>%
+  group_by(term) %>%
+  mutate(var_count = n()) %>%
+  distinct(term, var_count)
+var_ana = var_ana[order(-var_ana$var_count),]
+var_ana = var_ana[1:10,]
+var_ana
+```
+
+```{r}
+
+var_data = var_filter %>%
+  group_by(term) %>%
+  mutate(var_count = n()) %>%
+  filter(term %in% var_ana$term)
+
+write.csv(var_data, P("plot/var_data_0728.csv"), row.names = F)
+
+
+
+
+
+
+```
+
+
+```{r}
+getTabel <- function(n) {
+  gam_ALL = gam_ALL_total[[n]]
+  gam_DNA = gam_DNA_total[[n]]
+  gam_RNA = gam_RNA_total[[n]]
+  all = rel_deviance(gam_ALL, "ALL")
+  dna = rel_deviance(gam_DNA, "DNA")
+  rna = rel_deviance(gam_RNA, "RNA")
+  mer = all %>%
+    left_join(dna, by="term") %>%
+    left_join(rna, by="term")# %>%
+    mutate_if(is.numeric, function(x) {
+      cell_spec(x, "html", bold = T,
+                color = spec_color(x, end = 0.9))
+    })
+  
+  kable(mer, "html", escape = F, align = "c", caption = as.character(n)) %>%
+  kable_styling("striped", full_width = F)
+  return(mer)
+}
+getTabel(1)
+getTabel(2)
+getTabel(3)
+getTabel(4)
+getTabel(5)
+getTabel(6)
+getTabel(7)
+getTabel(8)
+getTabel(9)
+getTabel(10)
+
+
+
+```

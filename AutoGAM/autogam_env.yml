@@ -1,0 +1,27 @@
+name: autogam
+
+channels:
+  - conda-forge
+  - bioconda
+  - r
+
+dependencies:
+  - r-base=4.1.1
+  - r-tidyverse=1.3.1
+  - r-readxl=1.3.1
+  - r-dplyr=1.0.8
+  - r-tidyr=1.2.0
+  # - r-raster=3.5.15
+  # - r-elevatr=0.4.2
+  # - r-geosphere=1.5.14
+  - r-reshape2=1.4.4
+  - r-mgcv=1.8.39
+  - r-purrr=0.3.4
+  - r-caret=6.0.91
+  - r-MuMIn=1.46.0
+  - r-stringi=1.7.6
+  # - r-parallel=4.1.2
+  # - r-DataCombine=0.2.21
+  - r-getopt=1.20.3
+  - r-lubridate=1.8.0
+  - r-MuMIn=1.46.0
