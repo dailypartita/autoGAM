@@ -1,4 +1,4 @@
-#!/ldfssz1/ST_INFECTION/P20Z10200N0206_pathogendb/yangkaixin1/software/miniconda/bin/python
+#!/software/miniconda/bin/python
 import os
 import re
 import sys
@@ -70,8 +70,8 @@ def checkInputFile(pn_path, re_path):
 
 def callWorker():
 	# pn_path, re_path = getInputPath()
-	pn_path = '/jdfssz1/ST_HEALTH/P20Z10200N0206/kaixinyang/projects/AFRICA-GAM/ea_gam/input/batfeces_positive_0724_rerun_v3_filtered.xlsx'
-	re_path = '/jdfssz1/ST_HEALTH/P20Z10200N0206/kaixinyang/projects/AFRICA-GAM/ea_gam/input/EastAfrica_Requantification_0724_rerun_v1_batfecesfiltedspecies_filtered.xlsx'
+	pn_path = 'input/batfeces_positive_0724_rerun_v3_filtered.xlsx'
+	re_path = 'input/EastAfrica_Requantification_0724_rerun_v1_batfecesfiltedspecies_filtered.xlsx'
 	checkInputFile(pn_path, re_path)
 	work_r = pwd.joinpath('src/work.R')
 	output_dir = pwd.joinpath('output')
