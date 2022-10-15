@@ -1,5 +1,3 @@
-[![](https://img.shields.io/badge/%E7%97%85%E5%8E%9F%E7%BB%84%E5%AD%A6%E4%B8%AD%E5%BF%83-%E5%85%A8%E7%90%83%E7%97%85%E5%8E%9F%E6%95%B0%E6%8D%AE%E5%BA%93-brightgreen.svg?style=flat-square)](https://gitlab.genomics.cn/iori/gvd/virome-identification)
-
 # Table of Contents
 - [Table of Contents](#table-of-contents)
 - [Auto GAM](#auto-gam)
